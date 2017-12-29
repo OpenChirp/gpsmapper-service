@@ -10,9 +10,11 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/openchirp/framework"
 	log "github.com/sirupsen/logrus"
@@ -46,6 +48,7 @@ const (
 	latitudeKey  = 0
 	longitudeKey = 1
 	altitudeKey  = 2
+	gpsKey       = 3
 )
 
 // Device holds any data you want to keep around for a specific
@@ -96,6 +99,7 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 	ctrl.Subscribe(framework.TransducerPrefix+"/latitude", latitudeKey)
 	ctrl.Subscribe(framework.TransducerPrefix+"/longitude", longitudeKey)
 	ctrl.Subscribe(framework.TransducerPrefix+"/altitude", altitudeKey)
+	ctrl.Subscribe(framework.TransducerPrefix+"/gps", gpsKey)
 
 	// Send name to lookup goroutine, this will get populate later
 	// and then eventually saved
@@ -141,6 +145,17 @@ func (d *Device) ProcessConfigChange(ctrl *framework.DeviceControl, cchanges, co
 	//return "Sucessfully updated", true
 }
 
+func stripSpaces(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			// if the character is a space, drop it
+			return -1
+		}
+		// else keep it in the string
+		return r
+	}, str)
+}
+
 // ProcessMessage is called upon receiving a pubsub message destined for
 // this device.
 // Along with the standard DeviceControl object, the handler is provided
@@ -166,7 +181,7 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 		payloadStr := fmt.Sprintf("%s", msg.Payload())
 		log.Info("Setting Lat:" + payloadStr + " for " + ctrl.Id())
 		d.devCoord.Lat, err = strconv.ParseFloat(payloadStr, 64)
-		if err == nil {
+		if err == nil && (d.devCoord.Lat != 0.0) && (d.devCoord.Lat > -90) && (d.devCoord.Lat < 90) {
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
@@ -175,12 +190,24 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 		payloadStr := fmt.Sprintf("%s", msg.Payload())
 		log.Info("Setting Lon:" + payloadStr + " for " + ctrl.Id())
 		d.devCoord.Lon, err = strconv.ParseFloat(payloadStr, 64)
-		if err == nil {
+		if err == nil && (d.devCoord.Lon != 0.0) && (d.devCoord.Lon > -180) && (d.devCoord.Lon < 180) {
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
 		}
-
+	} else if msg.Key().(int) == gpsKey {
+		payloadStr := fmt.Sprintf("%s", msg.Payload())
+		log.Info("Got gps: " + payloadStr + " for " + ctrl.Id())
+		payloadStr = stripSpaces(payloadStr)
+		var lat, lon float64
+		cnt, _ := fmt.Sscanf(payloadStr, "%f,%f", &lat, &lon)
+		if (cnt > 1) && (lat != 0.0) && (lon != 0.0) && (lat > -90) && (lat < 90) && (lon > -180) && (lon < 180) {
+			d.devCoord.Lon = lon
+			d.devCoord.Lat = lat
+			mutex.Lock()
+			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
+			mutex.Unlock()
+		}
 	} else {
 		//logitem.Errorln("Received unassociated message")
 	}
