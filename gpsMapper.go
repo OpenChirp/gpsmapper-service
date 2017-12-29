@@ -132,28 +132,65 @@ func GenerateMap(m map[string]GPScoord, mapFile string) error {
 	f, err := os.Create(mapFile)
 	check(err)
 	defer f.Close()
-	n, err := f.WriteString(headerStr)
+	var n int
+	idCnt := 1
+	// Write JSON header
+	n, err = f.WriteString("var gatewayCoords = { \"type\": \"FeatureCollection\",\"features\": [\n")
 	if n < 1 {
-		err = errors.New("not able to write header")
+		err = errors.New("not able to write to file")
 	}
 
 	//	L.marker([40.44362, -79.94313]).addTo(mymap).bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
 	for k := range m {
 		var myCoord GPScoord
 		myCoord = m[k]
-		devStr := fmt.Sprintf("L.marker([%f,%f]).addTo(mymap).bindPopup(\"%s\");\n", myCoord.Lat, myCoord.Lon, myCoord.deviceName)
-		n2, err := f.WriteString(devStr)
-		if n2 < 1 {
-			err = errors.New("not able to write to file")
+		if strings.Contains(myCoord.deviceOptions, "gateway") == true {
+			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, myCoord.deviceName, idCnt)
+			idCnt++
+			n, err = f.WriteString(devStr)
+			if n < 1 {
+				err = errors.New("not able to write to file")
+			}
+			f.Sync()
+			check(err)
 		}
-		f.Sync()
-		check(err)
 	}
 
-	n, err = f.WriteString(footerStr)
+	// Write JSON footer
+	n, err = f.WriteString("]};")
 	if n < 1 {
-		err = errors.New("not able to write header")
+		err = errors.New("not able to write to file")
 	}
+
+	// Write JSON header
+	n, err = f.WriteString("\n\nvar transducerCoords = { \"type\": \"FeatureCollection\",\"features\": [\n")
+	if n < 1 {
+		err = errors.New("not able to write to file")
+	}
+
+	//	L.marker([40.44362, -79.94313]).addTo(mymap).bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
+	for k := range m {
+		var myCoord GPScoord
+		myCoord = m[k]
+		if strings.Contains(myCoord.deviceOptions, "gateway") == false {
+			//devStr := fmt.Sprintf("L.marker([%f,%f]).addTo(mymap).bindPopup(\"%s\");\n", myCoord.Lat, myCoord.Lon, myCoord.deviceName)
+			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, myCoord.deviceName, idCnt)
+			idCnt++
+			n, err = f.WriteString(devStr)
+			if n < 1 {
+				err = errors.New("not able to write to file")
+			}
+			f.Sync()
+			check(err)
+		}
+	}
+
+	// Write JSON footer
+	n, err = f.WriteString("]};")
+	if n < 1 {
+		err = errors.New("not able to write to file")
+	}
+
 	f.Sync()
 	check(err)
 	return nil
@@ -175,7 +212,7 @@ func testrig() {
 	myCoord.Alt = 0.0
 	myCoord.deviceID = "59f61c52f230cf7055615d2f"
 	myCoord.deviceName = "agr LoRa Gateway"
-	myCoord.deviceOptions = "LoRa Gateway"
+	myCoord.deviceOptions = "gateway"
 	myCoord.timestamp = time.Now()
 
 	// Add a device to the map
