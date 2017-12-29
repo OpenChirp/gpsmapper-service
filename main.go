@@ -195,9 +195,12 @@ func deviceNameLookup(c framework.Client) {
 		log.Info("Name Lookup for: " + name)
 		dev, err := c.FetchDeviceInfo(name)
 		check(err)
-		linkStr := fmt.Sprintf("Device: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", name, dev.Name)
+
 		mutex.Lock()
 		myCoord := gpsCoordMap[name]
+		mutex.Unlock()
+		linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceOptions, name, dev.Name)
+		mutex.Lock()
 		myCoord.deviceName = linkStr
 		gpsCoordMap[name] = myCoord
 		mutex.Unlock()
