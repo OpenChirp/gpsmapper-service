@@ -22,6 +22,8 @@ import (
 // gpsCoordMap is a Global structure for storing device GPS Coordinates
 var gpsCoordMap = make(map[string]GPScoord)
 
+var nameLookup chan string
+
 // Mutex to lock access to GPScoord
 var mutex = &sync.Mutex{}
 
@@ -44,7 +46,6 @@ const (
 	latitudeKey  = 0
 	longitudeKey = 1
 	altitudeKey  = 2
-	optionsKey   = 3
 )
 
 // Device holds any data you want to keep around for a specific
@@ -59,7 +60,7 @@ type Device struct {
 func NewDevice() framework.Device {
 	d := new(Device)
 	// The following initialization is redundant in Go
-	d.devCoord.Lat = 0
+	//d.devCoord.Lat = 0
 	//d.rawTxCount = 0
 	// Change type to the Device interface
 	return framework.Device(d)
@@ -74,11 +75,31 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 	logitem := log.WithField("deviceid", ctrl.Id())
 	logitem.Debug("Linking with config:", ctrl.Config())
 
+	//d.devCoord.deviceOptions =
+	//var m map[string]string
+	m := ctrl.Config()
+	d.devCoord.deviceOptions = m["Marker Type"]
+	d.devCoord.deviceID = ctrl.Id()
+	linkStr := fmt.Sprintf("Device ID: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", ctrl.Id(), ctrl.Id())
+	d.devCoord.deviceName = linkStr // Change this later to be the name you want displayed...
+	d.devCoord.timestamp = time.Now()
+
+	// Test if we don't already have data for this entry
+	_, ok := gpsCoordMap[d.devCoord.deviceID]
+	if ok == false {
+		mutex.Lock()
+		gpsCoordMap[d.devCoord.deviceID] = d.devCoord
+		mutex.Unlock()
+	}
+	//PrintCoord(d.devCoord)
 	// Subscribe to subtopic "transducer/xxx"
 	ctrl.Subscribe(framework.TransducerPrefix+"/latitude", latitudeKey)
 	ctrl.Subscribe(framework.TransducerPrefix+"/longitude", longitudeKey)
 	ctrl.Subscribe(framework.TransducerPrefix+"/altitude", altitudeKey)
-	ctrl.Subscribe(framework.TransducerPrefix+"/GPSoptions", optionsKey)
+
+	// Send name to lookup goroutine, this will get populate later
+	// and then eventually saved
+	nameLookup <- ctrl.Id()
 
 	logitem.Debug("Finished Linking")
 
@@ -130,12 +151,13 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 	logitem.Debugf("Processing Message: %v: [ % #x ]", msg.Key(), msg.Payload())
 	var err error
 
-	//myCoord.Lat = 40.44436
-	//myCoord.Lon = -79.91911
-	//myCoord.Alt = 0.0
-	d.devCoord.deviceID = ctrl.Id()
-	linkStr := fmt.Sprintf("Device ID: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", ctrl.Id(), ctrl.Id())
-	d.devCoord.deviceName = linkStr // Change this later to be the name you want displayed...
+	// Copy values from global map here so as to not overwrite existing values...
+	mutex.Lock()
+	d.devCoord = gpsCoordMap[ctrl.Id()]
+	mutex.Unlock()
+
+	//linkStr := fmt.Sprintf("Device ID: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", ctrl.Id(), ctrl.Id())
+	//d.devCoord.deviceName = linkStr // Change this later to be the name you want displayed...
 
 	//myCoord.deviceOptions = "LoRa Gateway"
 	d.devCoord.timestamp = time.Now()
@@ -157,11 +179,29 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
-
 		}
 
 	} else {
-		logitem.Errorln("Received unassociated message")
+		//logitem.Errorln("Received unassociated message")
+	}
+}
+
+// deviceNameLookup waits on the "name" channel for a device to lookup
+// and then makes the REST call and pushes it back into the data structure
+func deviceNameLookup(c framework.Client) {
+
+	for {
+		name := <-nameLookup
+		log.Info("Name Lookup for: " + name)
+		dev, err := c.FetchDeviceInfo(name)
+		check(err)
+		linkStr := fmt.Sprintf("Device: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", name, dev.Name)
+		mutex.Lock()
+		myCoord := gpsCoordMap[name]
+		myCoord.deviceName = linkStr
+		gpsCoordMap[name] = myCoord
+		mutex.Unlock()
+		log.Info("Setting Name: " + dev.Name)
 	}
 }
 
@@ -185,18 +225,22 @@ func run(ctx *cli.Context) error {
 
 	log.Info("Starting GPS Mapper Service")
 
-	LoadMapTemplate("header.txt", "footer.txt")
-	log.Info("Loaded Map Templates")
+	nameLookup = make(chan string, 1000)
 
 	mutex.Lock()
 	LoadCoords(gpsCoordMap, "gpsDB.dat")
 	mutex.Unlock()
 	log.Info("Loaded Device Location Data from file")
 
-	go gpsMapperWorker("leaflet/index.html", 10)
+	go gpsMapperWorker(ctx.String("geojson-path"), 10)
+
+	// LoadMapTemplate("header.txt", "footer.txt")
+	// log.Info("Loaded Map Templates")
 
 	/* Start framework service client */
+	//c, err := framework.StartServiceClientManaged(
 	c, err := framework.StartServiceClientManaged(
+
 		ctx.String("framework-server"),
 		ctx.String("mqtt-server"),
 		ctx.String("service-id"),
@@ -207,8 +251,11 @@ func run(ctx *cli.Context) error {
 		log.Error("Failed to StartServiceClient: ", err)
 		return cli.NewExitError(nil, 1)
 	}
+
 	defer c.StopClient()
 	log.Info("Started service")
+
+	go deviceNameLookup(c.Client)
 
 	/* Post service's global status */
 	if err := c.SetStatus("Starting"); err != nil {
@@ -278,6 +325,12 @@ func main() {
 			Value:  4,
 			Usage:  "debug=5, info=4, warning=3, error=2, fatal=1, panic=0",
 			EnvVar: "LOG_LEVEL",
+		},
+		cli.StringFlag{
+			Name:   "geojson-path",
+			Usage:  "Path to geojson file for leaflet",
+			Value:  "oc-geojason.js",
+			EnvVar: "GEOJSON_PATH",
 		},
 	}
 
