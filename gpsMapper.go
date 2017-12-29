@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -102,31 +101,6 @@ func SaveCoords(m map[string]GPScoord, coordfile string) error {
 	return nil
 }
 
-// LoadMapTemplate loads the html header and footer into
-// memory from the specified files. The GenerateMap function
-// will then write the header, custom data, footer to the map
-// index.html file
-func LoadMapTemplate(header, footer string) error {
-	b, err := ioutil.ReadFile(header) // just pass the file name
-	if err != nil {
-		fmt.Print(err)
-	}
-
-	headerStr = string(b) // convert content to a 'string'
-
-	//fmt.Println(headerStr) // print the content as a 'string'
-
-	c, err := ioutil.ReadFile(footer) // just pass the file name
-	if err != nil {
-		fmt.Print(err)
-	}
-
-	footerStr = string(c) // convert content to a 'string'
-
-	//fmt.Println(footerStr) // print the content as a 'string'
-	return nil
-}
-
 // GenerateMap will write the latest GPScoord map to file
 func GenerateMap(m map[string]GPScoord, mapFile string) error {
 	f, err := os.Create(mapFile)
@@ -144,7 +118,13 @@ func GenerateMap(m map[string]GPScoord, mapFile string) error {
 	for k := range m {
 		var myCoord GPScoord
 		myCoord = m[k]
-		if strings.Contains(myCoord.deviceOptions, "gateway") == true {
+		validGPS := false
+
+		if (myCoord.Lat) != 0 && (myCoord.Lon) != 0 {
+			validGPS = true
+		}
+
+		if (validGPS == true) && strings.Contains(strings.ToLower(myCoord.deviceOptions), "gateway") == true {
 			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, myCoord.deviceName, idCnt)
 			idCnt++
 			n, err = f.WriteString(devStr)
@@ -172,7 +152,13 @@ func GenerateMap(m map[string]GPScoord, mapFile string) error {
 	for k := range m {
 		var myCoord GPScoord
 		myCoord = m[k]
-		if strings.Contains(myCoord.deviceOptions, "gateway") == false {
+		validGPS := false
+
+		if (myCoord.Lat) != 0 && (myCoord.Lon) != 0 {
+			validGPS = true
+		}
+
+		if (validGPS == true) && (strings.Contains(strings.ToLower(myCoord.deviceOptions), "gateway") == false) {
 			//devStr := fmt.Sprintf("L.marker([%f,%f]).addTo(mymap).bindPopup(\"%s\");\n", myCoord.Lat, myCoord.Lon, myCoord.deviceName)
 			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, myCoord.deviceName, idCnt)
 			idCnt++
@@ -199,8 +185,6 @@ func GenerateMap(m map[string]GPScoord, mapFile string) error {
 func testrig() {
 
 	m := make(map[string]GPScoord)
-
-	LoadMapTemplate("header.txt", "footer.txt")
 
 	LoadCoords(m, "gpsDB.dat")
 
