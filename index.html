@@ -43,7 +43,8 @@
 	var redIcon = L.icon({
     		iconUrl: './images/marker-icon-red.png',
     		shadowUrl: './images/marker-shadow.png',
-		iconAnchor: [12, 41] 
+		iconAnchor: [12, 41], 
+		popupAnchor: [0,-30] 
     // 		iconSize:     [38, 95], // size of the icon
     //		shadowSize:   [50, 64], // size of the shadow
     //		iconAnchor:   [22, 94], // point of the icon which will correspond to marker's location
@@ -54,7 +55,8 @@
 	var blueIcon = L.icon({
     		iconUrl: './images/marker-icon.png',
     		shadowUrl: './images/marker-shadow.png',
-		iconAnchor: [12, 41] 
+		iconAnchor: [12, 41], 
+		popupAnchor: [0,-30] 
     // 		iconSize:     [38, 95], // size of the icon
     //		shadowSize:   [50, 64], // size of the shadow
     //		iconAnchor:   [22, 94], // point of the icon which will correspond to marker's location
@@ -81,21 +83,6 @@
 		layer.bindPopup(popupContent);
 	}
 
-	var gatewayLayer = L.geoJSON([gatewayCoords], {
-
-		style: function (feature) {
-			return feature.properties && feature.properties.style;
-		},
-
-		onEachFeature: onEachFeature,
-
-		pointToLayer: function (feature, latlng) {
-			return L.marker(latlng, {
-				icon: redIcon,
-			});
-		}
-	}).addTo(gateways);
-
 	var transducerLayer = L.geoJSON([transducerCoords], {
 
 		style: function (feature) {
@@ -111,11 +98,27 @@
 		}
 	}).addTo(transducers);
 
+	var gatewayLayer = L.geoJSON([gatewayCoords], {
+
+		style: function (feature) {
+			return feature.properties && feature.properties.style;
+		},
+
+		onEachFeature: onEachFeature,
+
+		pointToLayer: function (feature, latlng) {
+			return L.marker(latlng, {
+				icon: redIcon,
+			});
+		}
+	}).addTo(gateways);
+
 
 
 	var map = L.map('map', {
 		center: [40, -100],
-		zoom: 10,
+		maxZoom: 22,
+		maxNativeZoom: 18,
 		layers: [streets, gateways, transducers]
 	});
 
@@ -126,8 +129,8 @@
 	};
 
 	var overlays = {
-		"Gateways": gateways,
-		"Transducers": transducers 
+		"Transducers": transducers, 
+		"Gateways": gateways
 	};
 
 
