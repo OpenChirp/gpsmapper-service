@@ -34,6 +34,11 @@
 
 <script>
 
+	mbAttrSat = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
+
+  	mbUrlSat = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+
 	var mbAttr = 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
 			'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
 			'Imagery © <a href="http://mapbox.com">Mapbox</a>',
@@ -68,6 +73,7 @@
 
 	var grayscale   = L.tileLayer(mbUrl, {id: 'mapbox.light', attribution: mbAttr}),
 	    streets  = L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr});
+	    satellite = L.tileLayer(mbUrlSat, {id: 'mapbox.streets',   attribution: mbAttrSat});
 
 	var gateways = L.layerGroup();
 	var transducers = L.layerGroup();
@@ -119,13 +125,14 @@
 		center: [40, -100],
 		maxZoom: 22,
 		maxNativeZoom: 18,
-		layers: [streets, gateways, transducers]
+		layers: [satellite, gateways, transducers]
 	});
 
 
 	var baseLayers = {
 		"Grayscale": grayscale,
-		"Streets": streets
+		"Streets": streets,
+		"Satellite": satellite 
 	};
 
 	var overlays = {
