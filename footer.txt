@@ -1,0 +1,106 @@
+
+	mbAttrSat = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
+
+  	mbUrlSat = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+
+	var mbAttr = 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+			'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+			'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+		mbUrl = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+
+
+	var blueIcon = L.icon({
+    		iconUrl: 'http://res.openchirp.io/leaflet/images/marker-icon.png',
+    		shadowUrl: 'http://res.openchirp.io/leaflet/images/marker-shadow.png',
+		iconAnchor: [12, 41], 
+		popupAnchor: [0,-30] 
+    // 		iconSize:     [38, 95], // size of the icon
+    //		shadowSize:   [50, 64], // size of the shadow
+    //		iconAnchor:   [22, 94], // point of the icon which will correspond to marker's location
+    //		shadowAnchor: [4, 62],  // the same for the shadow
+    //		popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+	});
+
+
+
+	var grayscale   = L.tileLayer(mbUrl, {id: 'mapbox.light', attribution: mbAttr}),
+	    streets  = L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr});
+	    satellite = L.tileLayer(mbUrlSat, {id: 'mapbox.streets',   attribution: mbAttrSat});
+
+	var transducers = L.layerGroup();
+
+	function onEachFeature(feature, layer) {
+		//var popupContent = "<p>I started out as a GeoJSON " +
+		//		feature.geometry.type + ", but now I'm a Leaflet vector!</p>";
+		var popupContent =" ";
+		if (feature.properties && feature.properties.popupContent) {
+			popupContent += feature.properties.popupContent;
+		}
+
+		layer.bindPopup(popupContent);
+	}
+
+	var transducerLayer = L.geoJSON([transducerCoords], {
+
+		style: function (feature) {
+			return feature.properties && feature.properties.style;
+		},
+
+		onEachFeature: onEachFeature,
+
+		pointToLayer: function (feature, latlng) {
+			return L.marker(latlng, {
+				icon: blueIcon,
+			});
+		}
+	}).addTo(transducers);
+
+
+
+	var map = L.map('map', {
+		center: [40, -100],
+		zoom: 1,
+		//maxZoom: 22,
+		//maxNativeZoom: 18,
+		layers: [streets, transducers]
+	});
+
+
+	var baseLayers = {
+		"Grayscale": grayscale,
+		"Streets": streets,
+		"Satellite": satellite 
+	};
+
+	var overlays = {
+		"My Devices": transducers, 
+	};
+
+
+	map.fitBounds(transducerLayer.getBounds());
+	L.control.layers(baseLayers, overlays).addTo(map);
+
+
+	var popup = L.popup();
+
+	function onMapClick(e) {
+		popup
+			.setLatLng(e.latlng)
+			.setContent("GPS: " + e.latlng.toString())
+			.openOn(map);
+	}
+
+	map.on('click', onMapClick);
+
+
+
+
+</script>
+
+
+
+</body>
+</html>
+
+

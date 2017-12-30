@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -22,7 +23,9 @@ type GPScoord struct {
 	timestamp     time.Time
 	deviceID      string
 	deviceName    string
-	deviceOptions string
+	deviceType    string
+	ownerID       string
+	isPublic      string
 }
 
 func check(e error) {
@@ -37,7 +40,7 @@ func PrintCoord(v GPScoord) {
 	fmt.Println("\tDeviceName: ", v.deviceName)
 	fmt.Printf("\tLat Lon Alt: %f %f %f\n", v.Lat, v.Lon, v.Alt)
 	fmt.Println("\tTimestamp: ", v.timestamp.Format(time.RFC3339))
-	fmt.Println("\tDeviceOptions: ", v.deviceOptions)
+	fmt.Println("\tdeviceType: ", v.deviceType)
 
 }
 
@@ -67,7 +70,9 @@ func LoadCoords(m map[string]GPScoord, coordfile string) error {
 			myCoord.Alt, err = strconv.ParseFloat(record[3], 64)
 			tparse, err := time.Parse(time.RFC3339, record[4])
 			myCoord.deviceName = record[5]
-			myCoord.deviceOptions = record[6]
+			myCoord.deviceType = record[6]
+			myCoord.ownerID = record[7]
+			myCoord.isPublic = record[8]
 			myCoord.timestamp = tparse
 			m[record[0]] = myCoord
 		}
@@ -88,7 +93,9 @@ func SaveCoords(m map[string]GPScoord, coordfile string) error {
 	for k := range m {
 		var myCoord GPScoord
 		myCoord = m[k]
-		devStr := fmt.Sprintf("\"%s\",%f,%f,%f,%s,\"%s\",\"%s\"\n", myCoord.deviceID, myCoord.Lat, myCoord.Lon, myCoord.Alt, myCoord.timestamp.Format(time.RFC3339), myCoord.deviceName, myCoord.deviceOptions)
+		devStr := fmt.Sprintf("\"%s\",%f,%f,%f,%s,\"%s\",\"%s\",\"%s\",\"%s\"\n",
+			myCoord.deviceID, myCoord.Lat, myCoord.Lon, myCoord.Alt, myCoord.timestamp.Format(time.RFC3339),
+			myCoord.deviceName, myCoord.deviceType, myCoord.ownerID, myCoord.isPublic)
 		n3, err := f.WriteString(devStr)
 		if n3 < 1 {
 			err = errors.New("not able to write to file")
@@ -101,8 +108,8 @@ func SaveCoords(m map[string]GPScoord, coordfile string) error {
 	return nil
 }
 
-// GenerateMap will write the latest GPScoord map to file
-func GenerateMap(m map[string]GPScoord, mapFile string) error {
+// GenerateStaticMap will write the latest GPScoord map to file
+func GenerateStaticMap(m map[string]GPScoord, mapFile string) error {
 	f, err := os.Create(mapFile)
 	check(err)
 	defer f.Close()
@@ -124,8 +131,20 @@ func GenerateMap(m map[string]GPScoord, mapFile string) error {
 			validGPS = true
 		}
 
-		if (validGPS == true) && strings.Contains(strings.ToLower(myCoord.deviceOptions), "gateway") == true {
-			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, myCoord.deviceName, idCnt)
+		isPublic := false
+
+		// Default to public if option skipped...
+		if len(myCoord.isPublic) == 0 ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "1") == true ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "public") == true ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "true") == true ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "yes") == true {
+			isPublic = true
+		}
+
+		if (validGPS == true) && isPublic == true && strings.Contains(strings.ToLower(myCoord.deviceType), "gateway") == true {
+			linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 			idCnt++
 			n, err = f.WriteString(devStr)
 			if n < 1 {
@@ -158,9 +177,21 @@ func GenerateMap(m map[string]GPScoord, mapFile string) error {
 			validGPS = true
 		}
 
-		if (validGPS == true) && (strings.Contains(strings.ToLower(myCoord.deviceOptions), "gateway") == false) {
+		isPublic := false
+
+		// Default to public if option skipped...
+		if len(myCoord.isPublic) == 0 ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "1") == true ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "public") == true ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "true") == true ||
+			strings.Contains(strings.ToLower(myCoord.isPublic), "yes") == true {
+			isPublic = true
+		}
+
+		if (validGPS == true) && isPublic == true && (strings.Contains(strings.ToLower(myCoord.deviceType), "gateway") == false) {
 			//devStr := fmt.Sprintf("L.marker([%f,%f]).addTo(mymap).bindPopup(\"%s\");\n", myCoord.Lat, myCoord.Lon, myCoord.deviceName)
-			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, myCoord.deviceName, idCnt)
+			linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 			idCnt++
 			n, err = f.WriteString(devStr)
 			if n < 1 {
@@ -182,6 +213,30 @@ func GenerateMap(m map[string]GPScoord, mapFile string) error {
 	return nil
 }
 
+// LoadMapTemplate loads the html header and footer into
+// memory from the specified files. We use these when serving
+// local maps
+func LoadMapTemplate(header, footer string) error {
+	b, err := ioutil.ReadFile(header) // just pass the file name
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	headerStr = string(b) // convert content to a 'string'
+
+	//fmt.Println(headerStr) // print the content as a 'string'
+
+	c, err := ioutil.ReadFile(footer) // just pass the file name
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	footerStr = string(c) // convert content to a 'string'
+
+	//fmt.Println(footerStr) // print the content as a 'string'
+	return nil
+}
+
 func testrig() {
 
 	m := make(map[string]GPScoord)
@@ -196,13 +251,13 @@ func testrig() {
 	myCoord.Alt = 0.0
 	myCoord.deviceID = "59f61c52f230cf7055615d2f"
 	myCoord.deviceName = "agr LoRa Gateway"
-	myCoord.deviceOptions = "gateway"
+	myCoord.deviceType = "gateway"
 	myCoord.timestamp = time.Now()
 
 	// Add a device to the map
 	m[myCoord.deviceID] = myCoord
 
-	GenerateMap(m, "leaflet/index.html")
+	GenerateStaticMap(m, "leaflet/index.html")
 
 	//PrintCoord(m["12345"])
 

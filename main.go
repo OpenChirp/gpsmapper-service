@@ -7,6 +7,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -78,13 +79,14 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 	logitem := log.WithField("deviceid", ctrl.Id())
 	logitem.Debug("Linking with config:", ctrl.Config())
 
-	//d.devCoord.deviceOptions =
+	//d.devCoord.deviceType =
 	//var m map[string]string
 	m := ctrl.Config()
-	d.devCoord.deviceOptions = m["Marker Type"]
+	d.devCoord.deviceType = m["Marker Type"]
+	d.devCoord.isPublic = m["Public"]
 	d.devCoord.deviceID = ctrl.Id()
-	linkStr := fmt.Sprintf("Device ID: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", ctrl.Id(), ctrl.Id())
-	d.devCoord.deviceName = linkStr // Change this later to be the name you want displayed...
+	//linkStr := fmt.Sprintf("Device ID: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", ctrl.Id(), ctrl.Id())
+	d.devCoord.deviceName = "unknown" // Change this later to be the name you want displayed...
 	d.devCoord.timestamp = time.Now()
 
 	// Test if we don't already have data for this entry
@@ -174,7 +176,7 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 	//linkStr := fmt.Sprintf("Device ID: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", ctrl.Id(), ctrl.Id())
 	//d.devCoord.deviceName = linkStr // Change this later to be the name you want displayed...
 
-	//myCoord.deviceOptions = "LoRa Gateway"
+	//myCoord.deviceType = "LoRa Gateway"
 	d.devCoord.timestamp = time.Now()
 
 	if msg.Key().(int) == latitudeKey {
@@ -222,13 +224,15 @@ func deviceNameLookup(c framework.Client) {
 		log.Info("Name Lookup for: " + name)
 		dev, err := c.FetchDeviceInfo(name)
 		check(err)
-
+		// Owner ID string, just in case...
+		ownerStr := (dev.Owner).Id
+		log.Info("Owner Str: " + ownerStr)
 		mutex.Lock()
 		myCoord := gpsCoordMap[name]
 		mutex.Unlock()
-		linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceOptions, name, dev.Name)
 		mutex.Lock()
-		myCoord.deviceName = linkStr
+		myCoord.deviceName = dev.Name
+		myCoord.ownerID = ownerStr
 		gpsCoordMap[name] = myCoord
 		mutex.Unlock()
 		log.Info("Setting Name: " + dev.Name)
@@ -240,12 +244,93 @@ func gpsMapperWorker(outputFile string, updateSecs int) {
 	for {
 		time.Sleep(time.Duration(updateSecs * 1000000000))
 		mutex.Lock()
-		GenerateMap(gpsCoordMap, outputFile)
+		GenerateStaticMap(gpsCoordMap, outputFile)
 		SaveCoords(gpsCoordMap, "gpsDB.dat")
 		mutex.Unlock()
-		log.Info("Updated Map Output")
+		log.Info("Updated Static Global Map Output")
 
 	}
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	//fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
+
+	request := strings.Split(r.URL.Path[1:], "/")
+
+	if len(request) == 3 && strings.Compare(request[0], "map") == 0 {
+
+		fmt.Fprintf(w, "%s", headerStr)
+
+		// Write JSON header
+		fmt.Fprintf(w, "\n\nvar transducerCoords = { \"type\": \"FeatureCollection\",\"features\": [\n")
+
+		for k := range gpsCoordMap {
+			var myCoord GPScoord
+			mutex.Lock()
+			myCoord = gpsCoordMap[k]
+			mutex.Unlock()
+			validGPS := false
+			idCnt := 1
+
+			if (myCoord.Lat) != 0 && (myCoord.Lon) != 0 {
+				validGPS = true
+			}
+
+			if validGPS == true {
+
+				if (strings.Compare(request[1], "owner") == 0) && (strings.Compare(request[2], myCoord.ownerID) == 0) {
+					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+					fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
+					idCnt++
+				} else if (strings.Compare(request[1], "devices") == 0) && (strings.Compare(request[2], myCoord.deviceID) == 0) {
+					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+					fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
+					idCnt++
+				} else if (strings.Compare(request[1], "public") == 0) && (strings.Compare(request[2], "all") == 0) {
+					isPublic := false
+
+					// Default to public if option skipped...
+					if len(myCoord.isPublic) == 0 ||
+						strings.Contains(strings.ToLower(myCoord.isPublic), "1") == true ||
+						strings.Contains(strings.ToLower(myCoord.isPublic), "public") == true ||
+						strings.Contains(strings.ToLower(myCoord.isPublic), "true") == true ||
+						strings.Contains(strings.ToLower(myCoord.isPublic), "yes") == true {
+						isPublic = true
+					}
+					if isPublic {
+						linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+						fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
+						idCnt++
+					}
+				}
+
+			}
+		}
+
+		// Write JSON footer
+		fmt.Fprintf(w, "]};")
+
+		fmt.Fprintf(w, "%s", footerStr)
+
+	} else {
+		fmt.Fprintf(w, "Bad Request")
+
+	}
+
+}
+
+// MapHTTPServer runs an http client that returns dynamic map content
+func MapHTTPServer(port int) {
+	LoadMapTemplate("header.txt", "footer.txt")
+	portStr := fmt.Sprintf(":%d", port)
+	if len(portStr) == 0 {
+		fmt.Print("Could not open port: " + portStr)
+		os.Exit(-1)
+	}
+	fmt.Println("Launching web server on: " + portStr)
+	http.HandleFunc("/", handler)
+	http.ListenAndServe(portStr, nil)
+
 }
 
 // run is the main function that gets called once from main()
@@ -262,7 +347,8 @@ func run(ctx *cli.Context) error {
 	mutex.Unlock()
 	log.Info("Loaded Device Location Data from file")
 
-	go gpsMapperWorker(ctx.String("geojson-path"), 10)
+	// Launch the static world-view map
+	go gpsMapperWorker(ctx.String("geojson-path"), ctx.Int("static-update-rate"))
 
 	// LoadMapTemplate("header.txt", "footer.txt")
 	// log.Info("Loaded Map Templates")
@@ -286,6 +372,9 @@ func run(ctx *cli.Context) error {
 	log.Info("Started service")
 
 	go deviceNameLookup(c.Client)
+
+	// Launch the dynamic map server
+	go MapHTTPServer(ctx.Int("http-port"))
 
 	/* Post service's global status */
 	if err := c.SetStatus("Starting"); err != nil {
@@ -361,6 +450,18 @@ func main() {
 			Usage:  "Path to geojson file for leaflet",
 			Value:  "oc-geojason.js",
 			EnvVar: "GEOJSON_PATH",
+		},
+		cli.IntFlag{
+			Name:   "http-port",
+			Usage:  "Port for serving dynamic content",
+			Value:  9000,
+			EnvVar: "HTTP_PORT",
+		},
+		cli.IntFlag{
+			Name:   "static-update-rate",
+			Usage:  "Interval in seconds for static content update",
+			Value:  30,
+			EnvVar: "STATIC_UPDATE_RATE",
 		},
 	}
 
