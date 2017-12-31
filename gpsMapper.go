@@ -143,7 +143,7 @@ func GenerateStaticMap(m map[string]GPScoord, mapFile string) error {
 		}
 
 		if (validGPS == true) && isPublic == true && strings.Contains(strings.ToLower(myCoord.deviceType), "gateway") == true {
-			linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+			linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank' >%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 			idCnt++
 			n, err = f.WriteString(devStr)
@@ -190,7 +190,7 @@ func GenerateStaticMap(m map[string]GPScoord, mapFile string) error {
 
 		if (validGPS == true) && isPublic == true && (strings.Contains(strings.ToLower(myCoord.deviceType), "gateway") == false) {
 			//devStr := fmt.Sprintf("L.marker([%f,%f]).addTo(mymap).bindPopup(\"%s\");\n", myCoord.Lat, myCoord.Lon, myCoord.deviceName)
-			linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+			linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 			idCnt++
 			n, err = f.WriteString(devStr)

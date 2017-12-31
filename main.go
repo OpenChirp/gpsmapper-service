@@ -256,6 +256,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
 
 	request := strings.Split(r.URL.Path[1:], "/")
+	log.Info("Got HTTP Request")
 
 	if len(request) == 3 && strings.Compare(request[0], "map") == 0 {
 
@@ -279,11 +280,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			if validGPS == true {
 
 				if (strings.Compare(request[1], "owner") == 0) && (strings.Compare(request[2], myCoord.ownerID) == 0) {
-					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank' >%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 					fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 					idCnt++
 				} else if (strings.Compare(request[1], "devices") == 0) && (strings.Compare(request[2], myCoord.deviceID) == 0) {
-					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank' >%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 					fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 					idCnt++
 				} else if (strings.Compare(request[1], "public") == 0) && (strings.Compare(request[2], "all") == 0) {
@@ -298,7 +299,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 						isPublic = true
 					}
 					if isPublic {
-						linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
+						linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank' >%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 						fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 						idCnt++
 					}
@@ -323,6 +324,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func MapHTTPServer(port int) {
 	LoadMapTemplate("header.txt", "footer.txt")
 	portStr := fmt.Sprintf(":%d", port)
+	log.Info("Starting HTTP Service on port: " + portStr)
 	if len(portStr) == 0 {
 		fmt.Print("Could not open port: " + portStr)
 		os.Exit(-1)

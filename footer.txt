@@ -28,7 +28,9 @@
 	    streets  = L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr});
 	    satellite = L.tileLayer(mbUrlSat, {id: 'mapbox.streets',   attribution: mbAttrSat});
 
-	var transducers = L.layerGroup();
+	var transducers = L.markerClusterGroup({
+		maxClusterRadius: 5	    
+	});
 
 	function onEachFeature(feature, layer) {
 		//var popupContent = "<p>I started out as a GeoJSON " +
@@ -61,8 +63,8 @@
 	var map = L.map('map', {
 		center: [40, -100],
 		zoom: 1,
-		//maxZoom: 22,
-		//maxNativeZoom: 18,
+		maxZoom: 18,
+		maxNativeZoom: 18,
 		layers: [streets, transducers]
 	});
 
