@@ -13,14 +13,18 @@
     <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js" integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log==" crossorigin=""></script>
 
 
+        <link rel="stylesheet" href="./dist/MarkerCluster.css" />
+	<link rel="stylesheet" href="./dist/MarkerCluster.Default.css" />
+	<script src="./dist/leaflet.markercluster-src.js"></script>
+
 	<style>
 		html, body {
 			height: 100%;
 			margin: 0;
 		}
 		#map {
-			width: 800px;
-			height: 400px;
+			width: 100%;
+			height: 100%;
 		}
 	</style>
 
@@ -75,8 +79,14 @@
 	    streets  = L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr});
 	    satellite = L.tileLayer(mbUrlSat, {id: 'mapbox.streets',   attribution: mbAttrSat});
 
-	var gateways = L.layerGroup();
-	var transducers = L.layerGroup();
+	    var gateways = L.markerClusterGroup({
+		maxClusterRadius: 10
+	    });
+	var transducers = L.markerClusterGroup({
+		maxClusterRadius: 10	    
+	});
+//	var gateways = L.layerGroup();
+//	var transducers = L.layerGroup();
 
 	function onEachFeature(feature, layer) {
 		//var popupContent = "<p>I started out as a GeoJSON " +
@@ -123,9 +133,9 @@
 
 	var map = L.map('map', {
 		center: [40, -100],
-		maxZoom: 22,
+		maxZoom: 18,
 		maxNativeZoom: 18,
-		layers: [satellite, gateways, transducers]
+		layers: [streets, gateways, transducers]
 	});
 
 
