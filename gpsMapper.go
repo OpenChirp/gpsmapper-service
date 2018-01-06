@@ -142,7 +142,7 @@ func GenerateStaticMap(m map[string]GPScoord, mapFile string) error {
 			isPublic = true
 		}
 
-		if (validGPS == true) && isPublic == true && strings.Contains(strings.ToLower(myCoord.deviceType), "gateway") == true {
+		if (validGPS == true) && isPublic == true && ( strings.Contains(strings.ToLower(myCoord.deviceType), "gateway") == true || strings.Contains(strings.ToLower(myCoord.deviceType), "gw") == true ) {
 			linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank' >%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 			devStr := fmt.Sprintf("\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 			idCnt++
