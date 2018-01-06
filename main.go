@@ -187,6 +187,9 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
+			ctrl.Publish("transducer/out", fmt.Sprint("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
+		} else {
+			ctrl.Publish("transducer/err", fmt.Sprint("Failed to parse: %s", payloadStr))
 		}
 	} else if msg.Key().(int) == longitudeKey {
 		payloadStr := fmt.Sprintf("%s", msg.Payload())
@@ -196,6 +199,9 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
+			ctrl.Publish("transducer/out", fmt.Sprint("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
+		} else {
+			ctrl.Publish("transducer/err", fmt.Sprint("Failed to parse: %s", payloadStr))
 		}
 	} else if msg.Key().(int) == gpsKey {
 		payloadStr := fmt.Sprintf("%s", msg.Payload())
@@ -209,6 +215,8 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
+			ctrl.Publish("transducer/out", fmt.Sprint("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
+
 		}
 	} else {
 		//logitem.Errorln("Received unassociated message")
@@ -390,7 +398,7 @@ func run(ctx *cli.Context) error {
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 
 	/* Post service status indicating I started */
-	if err := c.SetStatus("Started"); err != nil {
+	if err := c.SetStatus("Running"); err != nil {
 		log.Error("Failed to publish service status: ", err)
 		return cli.NewExitError(nil, 1)
 	}
