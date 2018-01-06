@@ -82,8 +82,15 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 	//d.devCoord.deviceType =
 	//var m map[string]string
 	m := ctrl.Config()
-	d.devCoord.deviceType = m["Marker Type"]
-	d.devCoord.isPublic = m["Public"]
+	replacer := strings.NewReplacer("\"", "")
+
+	markerTypeStr := replacer.Replace(m["Marker Type"])
+	isPublicStr := replacer.Replace(m["Public"])
+	//	markerTypeStr := strings.Replace(m["Marker Type", "\"", " ", -1)
+	//	isPublicStr := strings.Replace(m["Public", "\"", " ", -1)
+
+	d.devCoord.deviceType = markerTypeStr
+	d.devCoord.isPublic = isPublicStr
 	d.devCoord.deviceID = ctrl.Id()
 	//linkStr := fmt.Sprintf("Device ID: <a href='http://www.openchirp.io/home/device/%s'>%s</a>", ctrl.Id(), ctrl.Id())
 	d.devCoord.deviceName = "unknown" // Change this later to be the name you want displayed...
