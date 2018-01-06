@@ -344,6 +344,7 @@ func run(ctx *cli.Context) error {
 
 	nameLookup = make(chan string, 1000)
 
+	log.Info("Loading Device Location Data from file")
 	mutex.Lock()
 	LoadCoords(gpsCoordMap, "gpsDB.dat")
 	mutex.Unlock()
