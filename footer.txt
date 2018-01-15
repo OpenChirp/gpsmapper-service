@@ -94,6 +94,7 @@
 	}
 
 	map.on('click', onMapClick);
+	map.addControl(new L.Control.Fullscreen());
 
 
 
