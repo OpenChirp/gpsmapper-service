@@ -298,7 +298,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank' >%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 					fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 					idCnt++
-				} else if (strings.Compare(request[1], "devices") == 0) && (strings.Compare(request[2], myCoord.deviceID) == 0) {
+				} else if (strings.Compare(request[1], "device") == 0) && (strings.Compare(request[2], myCoord.deviceID) == 0) {
 					linkStr := fmt.Sprintf("%s: <a href='http://www.openchirp.io/home/device/%s' target='_blank' >%s</a>", myCoord.deviceType, myCoord.deviceID, myCoord.deviceName)
 					fmt.Fprintf(w, "\t{\n\t\t\"geometry\": {\n\t\t\t\"type\": \"Point\",\n\t\t\t\"coordinates\": [%f,%f]\n\t\t},\n\t\t\"type\": \"Feature\",\n\t\t\"properties\": {\n\t\t\t\"popupContent\": \"%s\"\n\t\t},\n\t\t\"id\": %d\n\t},\n", myCoord.Lon, myCoord.Lat, linkStr, idCnt)
 					idCnt++
