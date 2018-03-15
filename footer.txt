@@ -11,8 +11,8 @@
 
 
 	var blueIcon = L.icon({
-    		iconUrl: 'http://res.openchirp.io/leaflet/images/marker-icon.png',
-    		shadowUrl: 'http://res.openchirp.io/leaflet/images/marker-shadow.png',
+    		iconUrl: 'https://res.openchirp.io/leaflet/images/marker-icon.png',
+    		shadowUrl: 'https://res.openchirp.io/leaflet/images/marker-shadow.png',
 		iconAnchor: [12, 41], 
 		popupAnchor: [0,-30] 
     // 		iconSize:     [38, 95], // size of the icon
