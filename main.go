@@ -104,11 +104,11 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 		mutex.Unlock()
 	}
 	//PrintCoord(d.devCoord)
-	// Subscribe to subtopic "transducer/xxx"
-	ctrl.Subscribe(framework.TransducerPrefix+"/latitude", latitudeKey)
-	ctrl.Subscribe(framework.TransducerPrefix+"/longitude", longitudeKey)
-	ctrl.Subscribe(framework.TransducerPrefix+"/altitude", altitudeKey)
-	ctrl.Subscribe(framework.TransducerPrefix+"/gps", gpsKey)
+	// Subscribe to subtopic "xxx"
+	ctrl.Subscribe("latitude", latitudeKey)
+	ctrl.Subscribe("longitude", longitudeKey)
+	ctrl.Subscribe("gps", gpsKey)
+	ctrl.Subscribe("altitude", altitudeKey)
 
 	// Send name to lookup goroutine, this will get populate later
 	// and then eventually saved
@@ -194,9 +194,9 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
-			ctrl.Publish("transducer/gpsMapper_status", fmt.Sprintf("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
+			ctrl.Publish("gpsmapper_status", fmt.Sprintf("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
 		} else {
-			ctrl.Publish("transducer/gpsMapper_status", fmt.Sprintf("Failed to parse: %s", payloadStr))
+			ctrl.Publish("gpsmapper_status", fmt.Sprintf("Failed to parse: %s", payloadStr))
 		}
 	} else if msg.Key().(int) == longitudeKey {
 		payloadStr := fmt.Sprintf("%s", msg.Payload())
@@ -206,9 +206,9 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
-			ctrl.Publish("transducer/gpsMapper_status", fmt.Sprintf("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
+			ctrl.Publish("gpsmapper_status", fmt.Sprintf("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
 		} else {
-			ctrl.Publish("transducer/gpsMapper_status", fmt.Sprintf("Failed to parse: %s", payloadStr))
+			ctrl.Publish("gpsmapper_status", fmt.Sprintf("Failed to parse: %s", payloadStr))
 		}
 	} else if msg.Key().(int) == gpsKey {
 		payloadStr := fmt.Sprintf("%s", msg.Payload())
@@ -222,7 +222,7 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 			mutex.Lock()
 			gpsCoordMap[d.devCoord.deviceID] = d.devCoord
 			mutex.Unlock()
-			ctrl.Publish("transducer/gpsMapper_status", fmt.Sprintf("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
+			ctrl.Publish("gpsmapper_status", fmt.Sprintf("Logged %f,%f", d.devCoord.Lat, d.devCoord.Lon))
 
 		}
 	} else {
