@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/OpenChirp/gpsmapper-service.svg?branch=master)](https://travis-ci.org/OpenChirp/gpsmapper-service)
+
 # gpsmapper-service
 GPS mapping service that generates a static leaflet map
 
